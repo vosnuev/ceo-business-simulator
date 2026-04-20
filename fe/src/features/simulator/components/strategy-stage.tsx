@@ -133,7 +133,7 @@ export function StrategyStage({
             <div
               key={metric.label}
               className={cn(
-                'flex min-h-[160px] flex-col justify-between rounded-2xl border p-4 transition-colors',
+                'flex min-h-[144px] flex-col justify-between rounded-2xl border p-4 transition-colors',
                 metric.tone === 'critical' && 'border-red-500/30 bg-red-500/5',
                 metric.tone === 'watch' && 'border-yellow-500/30 bg-yellow-500/5',
                 metric.tone === 'stable' && 'border-outline/10 bg-surface-container-low hover:border-primary/20',

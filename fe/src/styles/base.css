@@ -4,6 +4,16 @@ body,
   min-height: 100%;
 }
 
+html {
+  font-size: 17px;
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 18px;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
