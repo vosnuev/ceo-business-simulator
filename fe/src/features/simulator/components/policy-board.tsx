@@ -204,7 +204,7 @@ export function PolicyBoard({
             max={field.maximum ?? undefined}
             step={field.step ?? undefined}
             onChange={(event) => updateField(name, event.target.value)}
-            className="rounded border border-outline-variant/30 bg-background px-3 py-2 text-sm text-primary outline-none disabled:opacity-50"
+            className="rounded-md border border-outline-variant/60 bg-background px-3 py-2 text-sm text-primary outline-none transition-all focus:border-secondary focus:ring-1 focus:ring-secondary/50 disabled:opacity-50"
           />
         )}
 
@@ -223,7 +223,7 @@ export function PolicyBoard({
           {adjustment ? <p>planned spend: {adjustment.spentBudget.toLocaleString()}</p> : null}
         </div>
 
-        {error ? <p className="font-mono text-[10px] uppercase tracking-widest text-red-400">{error}</p> : null}
+        {error ? <p className="font-mono text-[10px] uppercase tracking-widest text-red-600">{error}</p> : null}
       </label>
     )
   }
@@ -251,14 +251,14 @@ export function PolicyBoard({
                 className={[
                   'h-full rounded border p-4 text-left transition-colors',
                   isSelected
-                    ? 'border-secondary/50 bg-secondary/10 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                    ? 'border-secondary/50 bg-secondary/5 shadow-[0_0_12px_rgba(66,122,181,0.1)]'
                     : 'border-outline-variant/30 bg-background hover:border-secondary/20',
                   interactionDisabled ? 'cursor-not-allowed opacity-60' : '',
                 ].join(' ')}
               >
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-sans text-sm font-bold text-primary">{incident.title}</h3>
-                  <span className="rounded bg-red-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-red-400">
+                  <span className="rounded bg-red-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-red-600">
                     {incident.severity}
                   </span>
                 </div>
@@ -286,15 +286,15 @@ export function PolicyBoard({
         </div>
 
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded border border-outline-variant/20 bg-background p-4">
+          <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high p-4">
             <p className="font-mono text-[10px] uppercase tracking-widest text-secondary">Total Budget</p>
             <p className="mt-2 font-mono text-xl font-black text-primary">{(strategyBudget?.total_budget ?? 0).toLocaleString()}</p>
           </div>
-          <div className="rounded border border-outline-variant/20 bg-background p-4">
+          <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high p-4">
             <p className="font-mono text-[10px] uppercase tracking-widest text-secondary">Remaining</p>
             <p className="mt-2 font-mono text-xl font-black text-primary">{budgetPreview.remainingBudget.toLocaleString()}</p>
           </div>
-          <div className="rounded border border-outline-variant/20 bg-background p-4">
+          <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high p-4">
             <div className="flex items-center gap-2">
               <Coins className="size-4 text-secondary" />
               <p className="font-mono text-[10px] uppercase tracking-widest text-secondary">Planned Spend</p>
@@ -325,7 +325,7 @@ export function PolicyBoard({
               ) : null}
 
               {groupedFields.advanced.length > 0 ? (
-                <details className="rounded border border-outline-variant/20 bg-surface-container-low p-4">
+                <details className="rounded-lg border border-outline-variant/60 bg-white p-4 shadow-sm">
                   <summary className="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.2em] text-secondary">
                     {renderGroupLabel('advanced')}
                   </summary>
@@ -339,7 +339,7 @@ export function PolicyBoard({
               ) : null}
 
               {groupedFields.context.length > 0 ? (
-                <details className="rounded border border-outline-variant/20 bg-surface-container-low p-4">
+                <details className="rounded-lg border border-outline-variant/60 bg-white p-4 shadow-sm">
                   <summary className="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.2em] text-secondary">
                     {renderGroupLabel('context')}
                   </summary>
@@ -361,7 +361,7 @@ export function PolicyBoard({
               </p>
             ) : null}
             {budgetPreview.overBudget ? (
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-red-400">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-red-600">
                 planned spend exceeds remaining budget
               </p>
             ) : null}

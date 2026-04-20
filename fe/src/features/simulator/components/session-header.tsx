@@ -57,7 +57,7 @@ export function SessionHeader({
         : 'neutral'
 
   return (
-    <header className="relative overflow-hidden rounded-[2rem] border border-outline/10 bg-surface-container-low px-6 py-8 shadow-sm lg:px-10 lg:py-10">
+    <header className="relative overflow-hidden rounded-[2rem] border border-outline-variant/60 bg-white px-6 py-8 shadow-sm lg:px-10 lg:py-10">
       <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-primary/6 blur-3xl" />
       <div className="absolute bottom-0 left-12 h-32 w-32 rounded-full bg-secondary/8 blur-3xl" />
       <div className="relative flex flex-col gap-8">

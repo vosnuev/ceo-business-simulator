@@ -57,7 +57,7 @@ export const FeatureGrid = React.forwardRef<HTMLDivElement, FeatureGridProps>(
           return (
             <article key={`${item.eyebrow ?? item.title}-${item.title}`} className={featureCardVariants({ tone })}>
               <div className="flex items-start gap-3">
-                <div className="rounded-lg border border-white/10 bg-background/70 p-2 text-secondary shadow-[0_0_18px_rgba(14,165,233,0.12)]">
+                <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low p-2 text-secondary">
                   <Icon className="size-5" />
                 </div>
                 <div className="min-w-0">

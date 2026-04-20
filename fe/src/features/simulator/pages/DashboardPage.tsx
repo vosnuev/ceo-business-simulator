@@ -50,13 +50,16 @@ function OverlayModal({
   actions: ReactNode
 }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-6 py-10 backdrop-blur-sm">
-      <div className="w-full max-w-3xl rounded border border-outline-variant/30 bg-surface-container-high p-6 shadow-[0_0_40px_rgba(0,0,0,0.45)]">
-        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-secondary">{badge}</p>
-        <h2 className="mt-2 font-serif text-3xl font-black text-primary">{title}</h2>
-        <p className="mt-3 text-sm leading-7 text-on-surface-variant">{description}</p>
-        <div className="mt-6 space-y-4">{children}</div>
-        <div className="mt-6 flex justify-end gap-3">{actions}</div>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 px-6 py-10 backdrop-blur-md">
+      <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-outline/30 bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
+        <div className="h-1 w-full ink-gradient" />
+        <div className="p-8">
+          <span className="inline-block rounded-full bg-secondary/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-secondary">{badge}</span>
+          <h2 className="mt-4 font-serif text-3xl font-black text-primary">{title}</h2>
+          <p className="mt-3 text-sm leading-7 text-on-surface-variant">{description}</p>
+          <div className="mt-8 space-y-4">{children}</div>
+          <div className="mt-8 flex justify-end gap-3">{actions}</div>
+        </div>
       </div>
     </div>
   )
@@ -377,10 +380,10 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="bg-surface overflow-hidden h-screen flex flex-col font-sans">
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-6 py-4 bg-surface-container-low border-b border-outline-variant/30">
+    <div className="bg-background overflow-hidden h-screen flex flex-col font-sans">
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-6 py-4 bg-white border-b border-outline-variant/50 shadow-sm">
         <div className="flex items-center gap-8">
-          <span className="font-mono text-xl font-bold text-red-500 uppercase tracking-widest">
+          <span className="font-mono text-xl font-bold text-secondary uppercase tracking-widest">
             U.C. Simulation Core
           </span>
           <nav className="hidden md:flex gap-6 items-center">
@@ -389,7 +392,7 @@ export function DashboardPage() {
             </span>
             <div className="h-4 w-px bg-outline/50 mx-2" />
             <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
-              <span className={`size-2 rounded-full ${backendMode === 'live' ? 'bg-secondary' : backendMode === 'mock' ? 'bg-primary' : 'bg-red-500 animate-pulse'}`} />
+              <span className={`size-2 rounded-full ${backendMode === 'live' ? 'bg-emerald-500' : backendMode === 'mock' ? 'bg-amber-500' : 'bg-red-500 animate-pulse'}`} />
               {backendMode === 'live' ? 'Live' : backendMode === 'mock' ? 'Mock' : 'Offline'}
             </span>
             <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant">

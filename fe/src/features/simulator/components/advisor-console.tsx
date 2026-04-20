@@ -70,7 +70,7 @@ function ToolTraceCard({ part }: { part: ToolTracePart }) {
         {part.state === 'output-error' ? (
           <div>
             <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-red-400">Error</p>
-            <p className="rounded bg-red-500/10 px-3 py-2 font-mono text-[10px] leading-5 text-red-300">
+            <p className="rounded bg-red-500/10 px-3 py-2 font-mono text-[10px] leading-5 text-red-600">
               {part.errorText ?? 'Unknown tool error'}
             </p>
           </div>
@@ -140,7 +140,7 @@ export function AdvisorConsole({
           </p>
         </div>
 
-        <div className="relative mb-6 overflow-hidden rounded border border-outline-variant/30 bg-surface-container p-4 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+        <div className="relative mb-6 overflow-hidden rounded-lg border border-outline-variant/30 bg-surface-container p-4">
           <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l bg-secondary"></div>
           <p className="mb-2 font-mono text-[10px] font-black uppercase tracking-[0.22em] text-secondary animate-pulse">
             [ ALERT: ACTIVE INCIDENT DETECTED ]
@@ -157,7 +157,7 @@ export function AdvisorConsole({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <div className="flex min-h-0 flex-1 flex-col rounded border border-outline-variant/20 bg-background p-4 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+          <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-outline-variant/20 bg-background p-4">
             <div className="mb-2 flex items-center gap-2 border-b border-outline-variant/30 pb-2">
               <BrainCircuit className="size-4 text-secondary opacity-70" />
               <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-variant/70">Synthesis Log</p>
@@ -217,7 +217,7 @@ export function AdvisorConsole({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 rounded border border-outline-variant/30 bg-surface-container-highest p-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-outline-variant/50 bg-surface-container-high p-4">
             <label className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-secondary" htmlFor="operator-request">
               <span className="text-primary">&gt;</span> COMMAND_INPUT
             </label>
@@ -227,12 +227,18 @@ export function AdvisorConsole({
               value={draftRequest}
               disabled={interactionDisabled}
               onChange={(event) => onDraftChange(event.target.value)}
-              className="min-h-[80px] resize-none rounded border border-outline/20 bg-background px-3 py-3 text-sm font-sans text-primary transition-all placeholder:text-on-surface-variant/30 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/50"
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.shiftKey) return
+                event.preventDefault()
+                if (interactionDisabled || isPending) return
+                onSubmit()
+              }}
+              className="min-h-[80px] resize-none rounded-md border border-outline-variant/60 bg-background px-3 py-3 text-sm font-sans text-primary transition-all placeholder:text-on-surface-variant/30 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/50"
               placeholder="Enter policy directives for the core to process..."
             />
             {interactionMessage ? <p className="rounded bg-secondary/10 p-2 text-[10px] font-mono tracking-widest uppercase text-secondary">{interactionMessage}</p> : null}
-            {assistantError ? <p className="rounded bg-red-500/10 p-2 text-[10px] font-mono tracking-widest uppercase text-red-500">{assistantError}</p> : null}
-            <Button onClick={onSubmit} disabled={interactionDisabled || isPending} className="ink-gradient h-10 w-full justify-center rounded border border-secondary/50 font-mono text-[11px] font-bold tracking-widest uppercase text-white transition-all hover:shadow-[0_0_15px_rgba(14,165,233,0.4)]">
+            {assistantError ? <p className="rounded bg-red-500/10 p-2 text-[10px] font-mono tracking-widest uppercase text-red-600">{assistantError}</p> : null}
+            <Button onClick={onSubmit} disabled={interactionDisabled || isPending} className="ink-gradient h-10 w-full justify-center rounded-lg font-mono text-[11px] font-bold tracking-widest uppercase text-white transition-all hover:shadow-[0_4px_20px_rgba(66,122,181,0.3)]">
               {isPending ? (
                 <span className="flex items-center gap-2 animate-pulse">
                   <BrainCircuit className="size-4 animate-spin-slow" />

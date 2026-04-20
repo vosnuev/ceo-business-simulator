@@ -1,256 +1,34 @@
 # FE-BE Prediction Schema And Flow
 
-## 목적
+## 0. 문서 목적
 
-이 문서는 현재 시뮬레이터에서 아래 3가지를 한 번에 정리한다.
+본 문서는 현재 구현 기준으로 FE와 BE가 시뮬레이션 예측을 위해 어떤 계약을 주고받는지 정리한다.
 
-- 서빙 모델이 실제로 요구하는 입력 스키마
-- BE business logic 이 사용하는 내부 스키마와 변환 규칙
-- FE 와 BE 사이에서 실제로 주고받는 정보와 구현 위치
+현재 구조의 핵심은 아래 한 줄이다.
 
-기준 코드는 아래 경로들이다.
+`incident 기반 충격 -> FE strategy form 조정 -> strict raw model input 제출 -> BE 예측`
 
-- BE 모델/로직: `be/src/be/business_model.py`, `be/src/be/prediction.py`, `be/src/be/schemas.py`
-- BE 시나리오 소스: `be/src/be/simulation_scenario.json`
-- FE 계약/호출: `fe/src/shared/api/contracts.ts`, `fe/src/shared/api/prediction.ts`
-- FE orchestration: `fe/src/features/simulator/pages/DashboardPage.tsx`, `fe/src/features/simulator/hooks/use-simulation-prediction.ts`
-- FE LLM/operator: `fe/src/features/operator/hooks/use-operator-assistant.ts`, `fe/src/features/simulator/components/advisor-console.tsx`
-- 서빙 모델 스키마 원본: `back_research/myungbin/Ecommerce_Customer/artifacts/model_xgb_v2_no_customer_id_schema.json`
+즉 현재는 과거의 `decision/action_id` 중심 계약이 아니라, `PredictionState.model_input` 을 직접 주고받는 구조다.
 
-## 1. 현재 서빙 모델
+## 1. 현재 런타임 요약
 
-현재 BE 기본 서빙 모델은 아래 파일이다.
+현재 FE-BE 예측 흐름은 아래 순서로 동작한다.
 
-- 모델: `back_research/myungbin/Ecommerce_Customer/artifacts/model_xgb_v2_no_customer_id.pkl`
-- 스키마: `back_research/myungbin/Ecommerce_Customer/artifacts/model_xgb_v2_no_customer_id_schema.json`
+1. FE가 시스템을 고르면 BE에 세션 시작을 요청한다.
+2. BE는 랜덤 초기 유저 수, raw model input seed, model schema, strategy budget을 내려준다.
+3. FE는 현재 시스템에서 보이는 시나리오 카드 2개를 기준으로 incident를 고른다.
+4. BE는 선택된 incident의 event effect로 degraded input 을 만든다.
+5. 사용자는 `Strategy Options` 폼에서 값을 직접 조절한다.
+6. FE는 `incident_id + strict raw model input` 을 BE로 보낸다.
+7. BE는 예산 소모, loss rate, 다음 턴 incident 후보 2개, next state 를 계산해 돌려준다.
 
-설정 위치:
-
-- `be/src/be/settings.py`
-
-로드 흐름:
-
-1. `settings.py` 가 모델/스키마/데이터셋 경로를 정한다.
-2. `PredictionService` 가 `CustomerChurnBusinessModel` 을 생성한다.
-3. `CustomerChurnBusinessModel` 이 아래를 함께 검증한다.
-   - exported `pkl`
-   - exported schema json
-   - dataset 컬럼 순서
-
-즉 현재 서빙 기준의 source of truth 는 노트북 설명문이 아니라 아래 두 파일이다.
-
-- `model_xgb_v2_no_customer_id.pkl`
-- `model_xgb_v2_no_customer_id_schema.json`
-
-## 2. 모델이 요구하는 실제 입력 스키마
-
-모델 입력은 `EcommerceCustomerModelInput` 이다.
-
-정의 위치:
-
-- BE: `be/src/be/schemas.py`
-- FE: `fe/src/shared/api/contracts.ts`
-
-총 18개 컬럼이며 `CustomerID` 는 제거된 상태다.
-
-### Numeric Features
-
-| 필드 | 타입 | 의미 |
-| --- | --- | --- |
-| `Tenure` | `float` | 고객 유지 기간 |
-| `CityTier` | `int` | 지역 tier |
-| `WarehouseToHome` | `float` | 배송 체감 거리/시간 관련 지표 |
-| `HourSpendOnApp` | `float` | 앱 체류 시간 |
-| `NumberOfDeviceRegistered` | `int` | 등록 디바이스 수 |
-| `SatisfactionScore` | `int` | 만족도 점수 |
-| `NumberOfAddress` | `int` | 등록 주소 수 |
-| `Complain` | `int` | 불만 여부/수치 |
-| `OrderAmountHikeFromlastYear` | `float` | 전년 대비 주문금액 변화 |
-| `CouponUsed` | `float` | 쿠폰 사용량 |
-| `OrderCount` | `float` | 주문 수 |
-| `DaySinceLastOrder` | `float` | 마지막 주문 이후 경과일 |
-| `CashbackAmount` | `float` | 캐시백 금액 |
-
-### Categorical Features
-
-| 필드 | 타입 | 허용값 |
-| --- | --- | --- |
-| `PreferredLoginDevice` | `string` | `Computer`, `Mobile` |
-| `PreferredPaymentMode` | `string` | `Cash on Delivery`, `Credit Card`, `Debit Card`, `E wallet`, `UPI` |
-| `Gender` | `string` | `Female`, `Male` |
-| `PreferedOrderCat` | `string` | `Fashion`, `Grocery`, `Laptop & Accessory`, `Mobile`, `Others` |
-| `MaritalStatus` | `string` | `Divorced`, `Married`, `Single` |
-
-## 3. BE Business Logic 스키마
-
-### 3.1 PredictionState
-
-정의:
-
-- BE: `be/src/be/schemas.py`
-
-구조:
-
-```json
-{
-  "system_id": "growth | trust | platform | support",
-  "turn_index": 1,
-  "current_users": 13661,
-  "model_input": {
-    "Tenure": 9.0,
-    "PreferredLoginDevice": "Mobile",
-    "CityTier": 1,
-    "WarehouseToHome": 13.0,
-    "PreferredPaymentMode": "UPI",
-    "Gender": "Male",
-    "HourSpendOnApp": 3.0,
-    "NumberOfDeviceRegistered": 4,
-    "PreferedOrderCat": "Mobile",
-    "SatisfactionScore": 4,
-    "MaritalStatus": "Single",
-    "NumberOfAddress": 2,
-    "Complain": 0,
-    "OrderAmountHikeFromlastYear": 13.0,
-    "CouponUsed": 2.0,
-    "OrderCount": 4.0,
-    "DaySinceLastOrder": 3.0,
-    "CashbackAmount": 180.0
-  }
-}
-```
-
-설명:
-
-- `system_id`: 현재 어떤 운영 시스템 맥락에서 플레이 중인지 나타냄
-- `turn_index`: 현재 턴 번호
-- `current_users`: 현재 게임 상 사용자 수
-- `model_input`: 실제 churn 모델에 들어가는 customer-level feature row
-
-### 3.2 PredictionDecision
-
-정의:
-
-- BE: `be/src/be/schemas.py`
-
-구조:
-
-```json
-{
-  "action_id": "hold | coupon_push | service_recovery | experience_refresh | vip_protection | ops_stabilize",
-  "intensity": 0.0 ~ 1.0
-}
-```
-
-설명:
-
-- `action_id`: 어떤 business directive 를 선택했는지
-- `intensity`: 해당 directive 를 얼마나 강하게 적용할지
-
-### 3.3 SimulationEvent
-
-정의:
-
-- BE: `be/src/be/schemas.py`
-- 데이터 소스: `be/src/be/simulation_scenario.json`
-
-구조:
-
-- `event_id`
-- `system_id`
-- `label`
-- `summary`
-- `severity`
-- `weight`
-- `state_effects`
-- `feature_multipliers`
-- `feature_additions`
-- `loss_rate_bias`
-
-현재 코드에서 실제로 모델 입력에 반영되는 건 아래 3개다.
-
-- `feature_multipliers`
-- `feature_additions`
-- `loss_rate_bias`
-
-`state_effects` 는 현재 서빙 로직에서 사용되지 않는다.
-
-## 4. 회사 정책에서 고객 feature 로 내려가는 변환
-
-핵심 위치:
-
-- `be/src/be/business_model.py`
-
-현재 구조는 다음과 같다.
-
-1. 게임에서 사용자가 선택하는 것은 company-level policy / directive 이다.
-2. 학습 모델은 customer-level feature row 를 입력으로 받는다.
-3. `CustomerChurnBusinessModel.build_model_input()` 이 중간 번역 계층이다.
-4. 이 함수가 현재 `PredictionState.model_input` 을 기준으로 아래를 적용한다.
-   - directive effect
-   - random event effect
-5. 최종 결과를 새 `EcommerceCustomerModelInput` 으로 정규화한다.
-
-즉 현재 business model 의 역할은 아래 한 줄로 요약된다.
-
-> 회사 정책 선택을 고객 단위 18개 feature 변화로 번역하는 계층
-
-### 현재 directive -> feature 연결
-
-정의 위치:
-
-- `be/src/be/business_model.py:101-170`
-
-| action_id | 바꾸는 feature | 방식 |
-| --- | --- | --- |
-| `hold` | 없음 | 그대로 유지 |
-| `coupon_push` | `CouponUsed`, `CashbackAmount`, `SatisfactionScore` | 쿠폰/캐시백 증폭 + 만족도 소폭 증가 |
-| `service_recovery` | `Complain`, `WarehouseToHome`, `SatisfactionScore`, `HourSpendOnApp` | 불만/배송 체감 완화 + 만족도/체류 증가 |
-| `experience_refresh` | `HourSpendOnApp`, `OrderCount`, `DaySinceLastOrder`, `CashbackAmount` | engagement/order 증가 + recency 감소 |
-| `vip_protection` | `NumberOfAddress`, `NumberOfDeviceRegistered`, `CashbackAmount`, `SatisfactionScore` | 충성 고객 방어형 강화 |
-| `ops_stabilize` | `WarehouseToHome`, `Complain`, `SatisfactionScore` | 운영 안정화형 완화 |
-
-중요:
-
-- 현재는 이 매핑이 `dict[str, float]` 로 들어가 있어 stringly-typed 상태다.
-- 즉 `action_id`, feature name, category value 가 중앙 enum 으로 아직 정리되지 않았다.
-- 다음 리팩토링 대상은 이 부분이다.
-
-## 5. FE <-> BE 사이에 실제로 주고받는 정보
-
-### 5.1 대시보드 초기 데이터
-
-엔드포인트:
-
-- `GET /api/simulator/dashboard`
-
-BE:
-
-- 라우팅: `be/src/be/app.py:79-81`
-- 소스: `be/src/be/simulation_scenario.json`
-
-FE:
-
-- API 함수: `fe/src/features/simulator/api.ts`
-- 호출 hook: `fe/src/features/simulator/hooks/use-simulator-data.ts`
-- 최종 조합: `fe/src/features/simulator/pages/DashboardPage.tsx`
-
-주요 필드:
-
-- `workspace`
-- `systems`
-- `incidents`
-- `initialPolicies`
-- `initialMessages`
-- `focusBySystem`
-- `trendBySystem`
-
-### 5.2 세션 시작
+## 2. 세션 시작 계약
 
 엔드포인트:
 
 - `POST /api/prediction/session/start`
 
-요청 스키마:
+요청 예시:
 
 ```json
 {
@@ -260,57 +38,93 @@ FE:
 }
 ```
 
-응답 스키마:
+응답 예시:
 
 ```json
 {
   "session_id": "...",
   "random_seed": 7,
   "business_model_id": "ecommerce_customer_xgb_v2_no_customer_id",
-  "state": { "PredictionState" },
-  "available_actions": [{ "action_id": "...", "label": "...", "summary": "..." }],
+  "state": { "PredictionState": "..." },
   "model_schema": [{ "name": "Tenure", "dtype": "numeric", "categories": [] }],
-  "initial_trend_point": { "label": "Month 1", "actual_users": 13661, "predicted_users": 13661, "churn_risk": 0.0 }
+  "strategy_budget": {
+    "total_budget": 16234,
+    "remaining_budget": 16234,
+    "spent_budget": 0,
+    "currency": "credits"
+  },
+  "initial_trend_point": {
+    "label": "Month 1",
+    "actual_users": 13661,
+    "predicted_users": 13661,
+    "churn_risk": 0.0
+  }
 }
 ```
 
-FE 구현 위치:
+현재 FE 저장 항목:
 
-- API 함수: `fe/src/shared/api/prediction.ts`
-- 호출: `fe/src/features/simulator/hooks/use-simulation-prediction.ts:44-60`
-- 저장: `fe/src/stores/simulation-ui-store.ts`
+- `session_id`
+- `state`
+- `model_schema`
+- `strategy_budget`
+- `initial_trend_point`
 
-현재 주의점:
+구현 위치:
 
-- BE 는 `available_actions` 와 `model_schema` 를 같이 내려주지만, FE 는 현재 이를 store 에 저장하지 않는다.
-- 즉 실제 엔진이 허용하는 공식 action 목록은 응답에 존재하지만 현재 UI 와 operator agent 에서는 직접 사용하지 않는다.
+- FE API: `fe/src/shared/api/prediction.ts`
+- FE hook: `fe/src/features/simulator/hooks/use-simulation-prediction.ts`
+- FE store: `fe/src/stores/simulation-ui-store.ts`
+- BE schema: `be/src/be/schemas.py`
+- BE service: `be/src/be/prediction.py`
 
-### 5.3 턴 진행 / 예측 실행
+## 3. 턴 진행 / 예측 실행 계약
 
 엔드포인트:
 
 - `POST /api/prediction/churn`
 
-요청 스키마:
+요청 예시:
 
 ```json
 {
   "session_id": "...",
-  "state": { "PredictionState" },
-  "decision": {
-    "action_id": "experience_refresh",
-    "intensity": 0.65
-  }
+  "state": {
+    "system_id": "growth",
+    "turn_index": 1,
+    "current_users": 13661,
+    "model_input": {
+      "Tenure": 9,
+      "PreferredLoginDevice": "Mobile",
+      "CityTier": 1,
+      "WarehouseToHome": 14,
+      "PreferredPaymentMode": "Credit Card",
+      "Gender": "Male",
+      "HourSpendOnApp": 3,
+      "NumberOfDeviceRegistered": 4,
+      "PreferedOrderCat": "Mobile",
+      "SatisfactionScore": 3,
+      "MaritalStatus": "Single",
+      "NumberOfAddress": 3,
+      "Complain": 0,
+      "OrderAmountHikeFromlastYear": 15,
+      "CouponUsed": 1,
+      "OrderCount": 2,
+      "DaySinceLastOrder": 3,
+      "CashbackAmount": 163.28
+    }
+  },
+  "incident_id": "incident-growth-1"
 }
 ```
 
-현재 실제 FE payload 특징:
+현재 중요한 점:
 
-- `decision.action_id` 는 `policy.decision.actionId` 에서 그대로 옴
-- `decision.intensity` 도 `policy.decision.intensity` 를 그대로 relay 함
-- `incident_id` 필드는 스키마에는 있지만 현재 FE 에서 채우지 않음
+- FE는 이제 `decision` 을 보내지 않는다.
+- FE는 `incident_id` 를 실제로 BE에 보낸다.
+- FE는 strategy form 에서 사용자가 조정한 final `model_input` 을 그대로 보낸다.
 
-응답 스키마:
+응답 예시:
 
 ```json
 {
@@ -320,142 +134,121 @@ FE 구현 위치:
   "churn_probability": 0.18,
   "effective_loss_rate": 0.04,
   "retention_probability": 0.82,
-  "risk_band": "low | medium | high",
+  "risk_band": "low",
   "drivers": ["..."],
-  "event": { "SimulationEvent" },
+  "event": { "SimulationEvent": "..." },
+  "degraded_model_input": { "EcommerceCustomerModelInput": "..." },
+  "applied_adjustments": [{ "field_name": "SatisfactionScore", "spent_budget": 5000 }],
+  "spent_budget_this_turn": 5000,
+  "strategy_budget": {
+    "total_budget": 16234,
+    "remaining_budget": 11234,
+    "spent_budget": 5000,
+    "currency": "credits"
+  },
   "expected_lost_users": 530,
   "predicted_users_next": 13131,
-  "next_state": { "PredictionState" },
-  "trend_point": { "label": "Month 2", "actual_users": 13661, "predicted_users": 13131, "churn_risk": 4.0 }
+  "next_incident_id": "incident-growth-2",
+  "next_incident": { "DashboardIncident": "..." },
+  "next_incident_options": [{ "DashboardIncident": "..." }, { "DashboardIncident": "..." }],
+  "next_state": { "PredictionState": "..." },
+  "trend_point": {
+    "label": "Month 2",
+    "actual_users": 13661,
+    "predicted_users": 13131,
+    "churn_risk": 4.0
+  }
 }
 ```
 
-FE 구현 위치:
+현재 FE 활용 항목:
 
-- API 함수: `fe/src/shared/api/prediction.ts`
-- 요청 생성: `fe/src/features/simulator/hooks/use-simulation-prediction.ts:76-100`
-- 정책 선택 -> decision 변환: `fe/src/features/simulator/pages/DashboardPage.tsx:141-150`
+- `next_state`
+- `strategy_budget`
+- `trend_point`
+- `next_incident_id`
+- `next_incident_options`
+- 디버그/설명용 `degraded_model_input`, `applied_adjustments`
 
-## 6. FE 쪽에서 정책 결정이 만들어지는 위치
+## 4. Incident 와 Event 의 현재 관계
 
-### 6.1 유저가 누르는 곳
+현재 구조에서는 incident 와 event 가 아래처럼 연결된다.
 
-- 컴포넌트: `fe/src/features/simulator/components/policy-board.tsx`
-- 버튼: `Arm Directive`
+1. FE는 우측 `Issue` 카드에서 incident 2개를 보여준다.
+2. 사용자가 하나를 고르면 그 `incident_id` 를 BE로 보낸다.
+3. BE는 해당 incident 가 가리키는 `eventId` 를 찾아 현재 턴 event 로 사용한다.
+4. event 의 `featureAdditions`, `featureMultipliers`, `lossRateBias` 로 degraded input 을 만든다.
+5. scoring 후에는 다음 턴용 incident 후보 2개를 다시 뽑아 `next_incident_options` 로 내려준다.
+6. FE는 현재 시스템 incident 목록을 그 2개로 교체한다.
 
-### 6.2 실제 decision 으로 변환되는 곳
+즉 지금은 화면에서 보이는 incident 와, BE가 예측에 사용하는 event 가 일치하는 구조다.
 
-- `fe/src/features/simulator/pages/DashboardPage.tsx:141-150`
+## 5. Strategy Form 과 Budget 구조
 
-현재 로직:
+현재 FE는 `PolicyBoard` 안에서 전략을 `preset decision` 으로 다루지 않는다.
 
-1. 사용자가 `policy.id` 를 선택한다.
-2. `workspaceModel.policies` 에서 해당 policy 를 찾는다.
-3. 아래 값을 꺼낸다.
-   - `policy.decision.actionId`
-   - `policy.decision.intensity`
-4. FE 가 `PredictionDecision` 으로 바꿔 BE 에 보낸다.
+대신 아래 구조를 쓴다.
 
-즉 현재는 `policy -> decision` 매핑이 시나리오 JSON 안에 들어 있고, FE 는 그 값을 그대로 relay 한다.
+1. 선택된 incident 기준 degraded baseline input 계산
+2. strategy form 에서 editable field 직접 조정
+3. field 별 budget step / unit cost 로 예정 비용 계산
+4. 예산을 넘기면 Apply 버튼 비활성화
+5. Apply 시 최종 `model_input` 제출
 
-또한 현재 사용자는 자유롭게 action 을 조합해서 보내지 못한다.
+현재 strategy form preview 에서 바로 바뀌는 값:
 
-- 가능한 실행 액션은 우측 `PolicyBoard` 에 노출된 preset policy 선택뿐이다.
-- operator console 의 텍스트 입력은 LLM 조언용이며, BE prediction 요청을 직접 만들지 않는다.
+- 각 입력값
+- `Planned Spend`
+- `after apply`
 
-## 6.3 incident 와 실제 BE event 의 불일치 가능성
+반대로 실제 turn 이 실행되기 전까지 바뀌지 않는 값:
 
-현재 BE 는 `PredictionDecision.incident_id` 가 들어오면 그 incident 가 가리키는 event 를 고정 사용하고, 없으면 `system_id` 기준으로 랜덤 event 를 샘플링한다.
+- `Total Budget`
+- `Remaining`
 
-하지만 현재 FE 는 `incident_id` 를 보내지 않는다.
+## 6. Operator Agent 와의 연결
 
-즉 실제 런타임은 다음과 같다.
+현재 operator agent 는 FE가 들고 있는 아래 정보를 기준으로 답한다.
 
-1. FE 는 화면에서 특정 incident 를 보여준다.
-2. 사용자는 그 맥락에서 policy 를 고른다.
-3. FE 는 `action_id`, `intensity` 만 BE 에 보낸다.
-4. BE 는 같은 system 내 event 중 하나를 랜덤 선택해 예측한다.
+- 현재 state
+- 현재 선택 incident 상세
+- 우측에 보이는 scenario card 전체 목록
+- strategy input schema
+- 현재 budget / 예정 비용
+- 최신 trend
 
-따라서 현재 UI 에서 강조 중인 incident 와, BE 가 실제 계산에 사용한 event 가 항상 일치하지는 않는다.
+또한 사용자가 명시적으로 진행을 요청하면, agent 는 `update_strategy_input_value` tool 로 strategy form 값을 staged 상태까지 바꿀 수 있다.
 
-추가로 `selectedIncidentId` 상태는 store 와 page 에 존재하지만, 현재 읽은 범위에서는 이를 실제로 바꾸는 UI 연결이 보이지 않는다.
+중요:
 
-즉 현재 incident 맥락은 시스템별 첫 incident 에 사실상 고정될 가능성이 높다.
+- agent 는 prediction 자체를 실행하지 않는다.
+- agent 는 `Apply Strategy Input` 버튼 직전 상태까지만 만든다.
 
-## 7. FE 쪽 operator LLM 에서 state/context 를 읽는 위치
+## 7. 현재 게임 룰
 
-위치:
+현재 FE는 아래 게임 조건을 계산한다.
 
-- `fe/src/features/operator/hooks/use-operator-assistant.ts`
+실패 조건:
 
-현재 operator flow:
+- `Month 12` 이내 전체 budget 소진
+- `Month 24` 이내 초기 유저 대비 `30%` 이상 감소
 
-1. 사용자가 `AdvisorConsole` 에서 프롬프트 입력
-2. `DashboardPage.handleSubmitOperatorRequest()` 가 아래 컨텍스트를 수집
-   - `monthlyLabel`
-   - `selectedSystem.name`
-   - `predictionState`
-   - `highlightedIncident`
-   - `armedPolicies`
-   - `latestTrend`
-3. `useOperatorAssistant` 가 OpenRouter + AI SDK `streamText()` 호출
-4. tool 호출로 아래를 읽는다.
-   - `get_current_state`
-   - `get_priority_incident`
-   - `get_active_directives`
-   - `get_latest_trend`
-5. `readUIMessageStream()` 로 스트리밍 파트를 읽어서 `Synthesis Log` 에 표시한다.
+성공 조건:
 
-즉 operator LLM 은 현재 FE 가 들고 있는 prediction state 를 tool 로 조회하는 구조다.
+- 위 실패 없이 `Month 24` 도달
 
-## 8. 현재 구조에서 바로 보이는 문제점
+이 조건을 만족하면 입력이 잠기고 결과 모달이 뜬다.
 
-### 8.1 action_id 와 feature name 이 중앙 enum 으로 정리되지 않음
+## 8. 구현 파일 기준 레퍼런스
 
-현재 문제:
-
-- `SimulationAction.action_id` 는 아직 plain string
-- `PredictionDecision.action_id` 도 plain string
-- business model 내부 feature 조작도 `dict[str, float]`
-
-영향:
-
-- directive 와 실제 모델 feature 연결이 type level 에서 보장되지 않음
-- 오타가 나도 runtime 까지 가야 잡힘
-
-### 8.2 scenario 와 business model effect 가 분리돼 있음
-
-현재:
-
-- 시나리오 파일에는 `policy.decision` 만 있음
-- 실제 feature 조작은 `business_model.py` 안에 하드코딩
-
-즉:
-
-- 어떤 policy 가 어떤 모델 입력을 바꾸는지 한 파일에서 안 보임
-- 시나리오 authoring 과 모델 input authoring 이 분리되어 있음
-
-### 8.3 event schema 에 dead field 가 남아 있음
-
-`SimulationEvent.state_effects` 는 현재 customer-level serving flow에서 사용되지 않는다.
-
-## 9. 다음 리팩토링 권장 순서
-
-1. `action_id` 를 enum 으로 승격
-2. 18개 model feature name 도 enum 또는 상수 집합으로 승격
-3. `feature_multipliers` / `feature_additions` 를 typed adjustment list 로 변경
-4. 시나리오 파일에서도 policy 별 `affected_features` 를 명시
-5. FE 에서도 `PredictionDecision.action_id` 를 string 대신 union/enum 으로 고정
-
-이 순서로 가면 아래 질문에 답하기 쉬워진다.
-
-- 이 policy 는 모델 입력의 무엇을 바꾸는가?
-- 이 incident 는 어떤 지표를 흔드는가?
-- FE 가 보내는 현재 state 와 directive 가 실제로 어떤 feature row 로 번역되는가?
-
-## 10. 한 줄 요약
-
-- 모델이 실제로 요구하는 스키마는 `EcommerceCustomerModelInput` 18개 컬럼이다.
-- FE 와 BE 가 주고받는 핵심 계약은 `PredictionState`, `PredictionDecision`, `PredictionResponse` 다.
-- 현재 business logic 은 company-level directive 를 customer-level 18개 feature 변화로 번역한다.
-- 다만 directive/action/feature 연결은 아직 string 기반이라, 다음 리팩토링에서 enum + typed adjustment 구조로 정리하는 것이 맞다.
+- FE session/turn hook: `fe/src/features/simulator/hooks/use-simulation-prediction.ts`
+- FE page orchestration: `fe/src/features/simulator/pages/DashboardPage.tsx`
+- FE strategy form: `fe/src/features/simulator/components/policy-board.tsx`
+- FE trend graph: `fe/src/features/simulator/components/strategy-stage.tsx`
+- FE store: `fe/src/stores/simulation-ui-store.ts`
+- FE operator agent: `fe/src/features/operator/hooks/use-operator-assistant.ts`
+- FE API contracts: `fe/src/shared/api/contracts.ts`
+- BE schemas: `be/src/be/schemas.py`
+- BE prediction service: `be/src/be/prediction.py`
+- BE business model: `be/src/be/business_model.py`
+- Active scenario source: `be/src/be/simulation_scenario.json`

@@ -34,32 +34,32 @@ function StrategyTrendChart({
   const chartWidth = Math.max(720, trend.length * 140)
 
   return (
-    <div className="rounded border border-outline-variant/30 bg-surface-container-low p-6 editorial-shadow relative overflow-hidden h-full min-h-[420px]">
-      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(var(--color-secondary)_1px,transparent_1px)] [background-size:24px_24px]"></div>
+    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-6 editorial-shadow relative overflow-hidden h-full min-h-[420px]">
+      <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(var(--color-secondary)_1px,transparent_1px)] [background-size:24px_24px]"></div>
 
       <div className="relative z-10 mb-8 flex justify-between items-end gap-4 border-b border-outline-variant/30 pb-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-secondary">User Trajectory</p>
           <h3 className="mt-2 font-serif text-3xl font-black text-primary uppercase">Prediction Model</h3>
         </div>
-        <div className="rounded border border-secondary/30 bg-secondary/5 px-3 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-secondary shadow-[0_0_10px_rgba(14,165,233,0.2)]">
+        <div className="rounded-full border border-secondary/20 bg-secondary/5 px-3 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-secondary">
           Live Feed
         </div>
       </div>
 
       <div className="relative z-10 mb-6 grid gap-3 md:grid-cols-3">
-        <div className="rounded border border-outline-variant/20 bg-background/70 px-4 py-3">
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-on-surface-variant">Baseline Users</p>
           <p className="mt-2 font-mono text-xl font-black text-primary">{baselineUsers.toLocaleString()}</p>
         </div>
-        <div className="rounded border border-outline-variant/20 bg-background/70 px-4 py-3">
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-on-surface-variant">Current Users</p>
           <p className="mt-2 font-mono text-xl font-black text-primary">{latestUsers.toLocaleString()}</p>
         </div>
-        <div className="rounded border border-outline-variant/20 bg-background/70 px-4 py-3">
+        <div className="rounded-xl border border-outline-variant/50 bg-surface-container-high px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-on-surface-variant">Drop Vs Baseline</p>
-          <p className="mt-2 font-mono text-xl font-black text-red-400">-{latestDrop.toLocaleString()}</p>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-red-300/80">{latestDropRate.toFixed(1)}% down</p>
+          <p className="mt-2 font-mono text-xl font-black text-red-600">-{latestDrop.toLocaleString()}</p>
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-red-500">{latestDropRate.toFixed(1)}% down</p>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ function StrategyTrendChart({
                   name,
                 ]
               }}
-              contentStyle={{ backgroundColor: 'var(--color-surface-container-high)', borderRadius: '0', border: '1px solid var(--color-secondary)', boxShadow: '0 0 15px rgba(14,165,233,0.3)' }}
+              contentStyle={{ backgroundColor: 'var(--color-surface-container-lowest)', borderRadius: '8px', border: '1px solid var(--color-outline)', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
               labelStyle={{ color: 'var(--color-primary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'monospace', fontWeight: 'bold' }}
               itemStyle={{ fontFamily: 'monospace', fontSize: '0.75rem' }}
             />
@@ -113,7 +113,7 @@ export function StrategyStage({
 }: StrategyStageProps) {
   return (
     <section className="grid h-full min-h-0 gap-6 grid-rows-[minmax(320px,0.9fr)_minmax(420px,1.1fr)]">
-      <Card className="border-outline/10 bg-surface-container-lowest py-0 shadow-sm editorial-shadow h-full min-h-[420px]">
+      <Card className="border-outline-variant/60 bg-white py-0 shadow-sm h-full min-h-[420px] rounded-2xl">
         <CardHeader className="border-b border-outline/10 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
