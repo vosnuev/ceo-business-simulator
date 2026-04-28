@@ -13,7 +13,7 @@ export function SystemNavigator({
   onTabSelect,
 }: SystemNavigatorProps) {
   return (
-    <aside className="flex flex-col h-full border-r border-outline-variant/30 bg-surface-container-low w-[280px] flex-shrink-0">
+    <aside className="flex flex-col h-full border-r border-outline-variant/50 bg-white w-[280px] flex-shrink-0 shadow-sm z-10">
       <div className="p-6 border-b border-outline-variant/30">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-12 h-12 bg-secondary rounded text-white font-serif font-black text-2xl tracking-tighter">

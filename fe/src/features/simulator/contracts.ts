@@ -13,6 +13,7 @@ export type SystemSummary = {
 export type Incident = {
   id: string
   systemId: SystemId
+  eventId: string
   title: string
   summary: string
   severity: Severity
@@ -20,6 +21,10 @@ export type Incident = {
   impact: string
   window: string
   request: string
+  affectedFeatures: string[]
+  featureMultipliers: Record<string, number>
+  featureAdditions: Record<string, number>
+  lossRateBias: number
 }
 
 export type PredictionRow = {
@@ -31,26 +36,10 @@ export type PredictionRow = {
   trigger: string
 }
 
-export type Policy = {
-  id: string
-  title: string
-  effect: string
-  owner: string
-  status: 'Armed' | 'Draft' | 'Queued'
-  source: 'Preset' | 'Operator'
-}
-
-export type OperatorMessage = {
+export type OperatorSeedMessage = {
   id: string
   role: 'operator' | 'user'
   text: string
-}
-
-export type ToolEvent = {
-  id: string
-  tool: string
-  status: 'Completed' | 'Queued' | 'Running'
-  summary: string
 }
 
 export type ModelSignal = {
@@ -59,11 +48,33 @@ export type ModelSignal = {
   detail: string
 }
 
+export type TrendPoint = {
+  label: string
+  actualUsers: number | null
+  predictedUsers: number
+  churnRisk: number
+}
+
+export type PolicyFocus = {
+  title: string
+  summary: string
+  recommendation: string
+  rankingFactors: Array<{ factor: string; weight: 'Critical' | 'High' | 'Medium' | 'Low' }>
+}
+
+export type SimulatorWorkspace = {
+  monthlyLabel: string
+  scenarioLabel: string
+  scenarioSummary: string
+}
+
 export type SimulatorDashboardData = {
+  workspace: SimulatorWorkspace
   systems: SystemSummary[]
   incidents: Incident[]
   predictionRows: PredictionRow[]
-  initialPolicies: Policy[]
-  initialMessages: OperatorMessage[]
+  initialMessages: OperatorSeedMessage[]
   modelSignals: ModelSignal[]
+  focusBySystem: Record<SystemId, PolicyFocus>
+  trendBySystem: Record<SystemId, TrendPoint[]>
 }

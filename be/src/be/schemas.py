@@ -5,147 +5,231 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class ScenarioActionSpec(BaseModel):
-    action_id: str
-    label: str
-    direct_cost: float = 0.0
-    ops_cost: float = 0.0
-    cooldown: int = 0
-    min_paying_ratio: float | None = None
-    max_incident_pressure: float | None = None
-    effects: dict[str, float] = Field(default_factory=dict)
+SystemId = Literal["growth", "trust", "platform", "support"]
+Severity = Literal["critical", "high", "medium"]
+RiskBand = Literal["low", "medium", "high"]
 
 
-class ScenarioEventSpec(BaseModel):
+class SimulationEvent(BaseModel):
     event_id: str
+    system_id: SystemId | Literal["global"] = "global"
     label: str
+    summary: str
+    severity: Severity
     weight: float = 1.0
-    description: str = ""
-    effects: dict[str, float] = Field(default_factory=dict)
+    state_effects: dict[str, float] = Field(default_factory=dict)
+    feature_multipliers: dict[str, float] = Field(default_factory=dict)
+    feature_additions: dict[str, float] = Field(default_factory=dict)
+    loss_rate_bias: float = 0.0
 
 
-class ScenarioConfig(BaseModel):
-    scenario_id: str
+class ModelFeatureField(BaseModel):
+    name: str
+    dtype: Literal["numeric", "categorical"]
+    categories: list[str] = Field(default_factory=list)
     label: str
     description: str
-    max_turns: int = 8
-    initial_state: dict[str, float | int | str | None]
-    action_catalog: list[ScenarioActionSpec]
-    event_catalog: list[ScenarioEventSpec]
-    reward_weights: dict[str, float]
-    transition_coefficients: dict[str, float] = Field(default_factory=dict)
-    policy_config: dict[str, str | int | float] = Field(default_factory=dict)
+    group: Literal["core", "advanced", "context"]
+    minimum: float | None = None
+    maximum: float | None = None
+    step: float | None = None
+    direction: Literal["positive", "negative", "neutral"] = "neutral"
+    editable: bool = False
+    editable_reason: str = ""
+    budget_step: float | None = None
+    unit_budget_cost: int | None = None
 
 
-class VisibleState(BaseModel):
-    user_base: int = 10000
-    active_ratio: float = 0.55
-    retention_score: float = 0.58
-    paying_ratio: float = 0.14
-    lock_in_score: float = 0.45
-    incident_pressure: float = 0.20
+class EcommerceCustomerModelInput(BaseModel):
+    Tenure: int = Field(ge=0, le=61)
+    PreferredLoginDevice: Literal["Computer", "Mobile"]
+    CityTier: int = Field(ge=1, le=3)
+    WarehouseToHome: int = Field(ge=5, le=127)
+    PreferredPaymentMode: Literal[
+        "Cash on Delivery", "Credit Card", "Debit Card", "E wallet", "UPI"
+    ]
+    Gender: Literal["Female", "Male"]
+    HourSpendOnApp: int = Field(ge=0, le=5)
+    NumberOfDeviceRegistered: int = Field(ge=1, le=6)
+    PreferedOrderCat: Literal[
+        "Fashion", "Grocery", "Laptop & Accessory", "Mobile", "Others"
+    ]
+    SatisfactionScore: int = Field(ge=1, le=5)
+    MaritalStatus: Literal["Divorced", "Married", "Single"]
+    NumberOfAddress: int = Field(ge=1, le=22)
+    Complain: Literal[0, 1]
+    OrderAmountHikeFromlastYear: int = Field(ge=11, le=26)
+    CouponUsed: int = Field(ge=0, le=16)
+    OrderCount: int = Field(ge=1, le=16)
+    DaySinceLastOrder: int = Field(ge=0, le=46)
+    CashbackAmount: float = Field(ge=0, le=324.99)
 
 
-class LatentState(BaseModel):
-    churn_pressure: float = 0.35
-    trust_score: float = 0.57
-    competitive_pressure: float = 0.40
-    budget_stress: float = 0.25
-    action_fatigue: float = 0.10
+class PredictionState(BaseModel):
+    system_id: SystemId
+    turn_index: int = Field(default=1, ge=1)
+    current_users: int = Field(ge=0)
+    model_input: EcommerceCustomerModelInput
 
 
-class GameState(BaseModel):
+class PredictionSessionStartRequest(BaseModel):
+    system_id: SystemId
+    initial_users: int = Field(ge=10000, le=20000)
+    random_seed: int | None = None
+
+
+class PredictionSessionStartResponse(BaseModel):
     session_id: str
-    turn: int = 1
-    visible: VisibleState
-    latent: LatentState
-    last_action: str | None = None
-    action_cooldowns: dict[str, int] = Field(default_factory=dict)
-    revealed_event_id: str | None = None
-    history_ref: str | None = None
-    completed: bool = False
+    random_seed: int
+    business_model_id: str
+    state: PredictionState
+    model_schema: list[ModelFeatureField]
+    strategy_budget: "StrategyBudget"
+    initial_trend_point: "SimulationTrendPoint"
 
 
-class RewardComponents(BaseModel):
-    profit: float
-    user_quality: float
-    lockin: float
-    action_cost: float
-    incident_penalty: float
-    total: float
-
-
-class ShadowPolicyComparison(BaseModel):
-    recommended_action: str
-    user_action_q: float
-    best_action_q: float
-    regret: float
-
-
-class TurnResultPacket(BaseModel):
-    session_id: str
-    turn: int
-    event: ScenarioEventSpec
-    action_taken: str
-    next_state_summary: dict[str, float | int | str]
-    reward: RewardComponents
-    shadow_policy: ShadowPolicyComparison
-    next_state: GameState
-    llm_context: dict[str, str]
-
-
-class ScenarioSummary(BaseModel):
-    scenario_id: str
+class SimulationTrendPoint(BaseModel):
     label: str
-    description: str
-    max_turns: int
-
-
-class SessionStartRequest(BaseModel):
-    scenario_id: str
-    seed: int = 42
-    mode: str = "playable"
-
-
-class SessionStartResponse(BaseModel):
-    session_id: str
-    scenario: ScenarioSummary
-    state: GameState
-    current_event: ScenarioEventSpec | None
-    available_actions: list[ScenarioActionSpec]
-    repo_context: dict[str, str]
-
-
-class TurnRequest(BaseModel):
-    action_id: str
-
-
-class TurnResponse(BaseModel):
-    turn_result: TurnResultPacket
-    next_available_actions: list[ScenarioActionSpec]
-    current_event: ScenarioEventSpec | None
-    replay_snippet: TurnResultPacket
+    actual_users: int
+    predicted_users: int
+    churn_risk: float
 
 
 class PredictionRequest(BaseModel):
-    scenario_id: str | None = None
-    retention_score: float
-    paying_ratio: float
-    lock_in_score: float
-    trust_score: float
-    incident_pressure: float
-    competitive_pressure: float
-    budget_stress: float
-    action_fatigue: float
+    session_id: str
+    state: PredictionState
+    incident_id: str | None = None
+
+
+class StrategyBudget(BaseModel):
+    total_budget: int = Field(ge=0)
+    remaining_budget: int = Field(ge=0)
+    spent_budget: int = Field(ge=0)
+    currency: Literal["credits"] = "credits"
+
+
+class StrategyAdjustment(BaseModel):
+    field_name: str
+    label: str
+    direction: Literal["increase", "decrease", "hold"]
+    base_value: str | int | float
+    target_value: str | int | float
+    delta: float
+    budget_step: float
+    unit_budget_cost: int
+    spent_budget: int
 
 
 class PredictionResponse(BaseModel):
+    session_id: str
     engine_id: str
     engine_source: str
+    business_model_id: str
     churn_probability: float
+    effective_loss_rate: float
     retention_probability: float
-    risk_band: str
+    risk_band: RiskBand
     drivers: list[str]
+    event: SimulationEvent
+    degraded_model_input: EcommerceCustomerModelInput
+    applied_adjustments: list[StrategyAdjustment]
+    spent_budget_this_turn: int
+    strategy_budget: StrategyBudget
+    expected_lost_users: int
+    predicted_users_next: int
+    next_incident_id: str | None = None
+    next_incident: "DashboardIncident | None" = None
+    next_incident_options: list["DashboardIncident"] = Field(default_factory=list)
+    next_state: PredictionState
+    trend_point: SimulationTrendPoint
+
+
+class DashboardWorkspace(BaseModel):
+    monthlyLabel: str
+    scenarioLabel: str
+    scenarioSummary: str
+
+
+class DashboardSystemSummary(BaseModel):
+    id: SystemId
+    name: str
+    label: str
+    summary: str
+    danger: int
+    requests: int
+
+
+class DashboardIncident(BaseModel):
+    id: str
+    systemId: SystemId
+    eventId: str
+    title: str
+    summary: str
+    severity: Severity
+    requester: str
+    impact: str
+    window: str
+    request: str
+    affectedFeatures: list[str] = Field(default_factory=list)
+    featureMultipliers: dict[str, float] = Field(default_factory=dict)
+    featureAdditions: dict[str, float] = Field(default_factory=dict)
+    lossRateBias: float = 0.0
+
+
+class DashboardPredictionRow(BaseModel):
+    id: str
+    segment: str
+    churnRisk: str
+    urgency: str
+    projectedLoss: str
+    trigger: str
+
+
+class DashboardOperatorMessage(BaseModel):
+    id: str
+    role: Literal["operator", "user"]
+    text: str
+
+
+class DashboardModelSignal(BaseModel):
+    label: str
+    value: str
+    detail: str
+
+
+class DashboardRankingFactor(BaseModel):
+    factor: str
+    weight: Literal["Critical", "High", "Medium", "Low"]
+
+
+class DashboardPolicyFocus(BaseModel):
+    title: str
+    summary: str
+    recommendation: str
+    rankingFactors: list[DashboardRankingFactor]
+
+
+class DashboardTrendPoint(BaseModel):
+    label: str
+    actualUsers: int | None
+    predictedUsers: int
+    churnRisk: float
+
+
+class SimulatorDashboardResponse(BaseModel):
+    workspace: DashboardWorkspace
+    systems: list[DashboardSystemSummary]
+    incidents: list[DashboardIncident]
+    predictionRows: list[DashboardPredictionRow]
+    initialMessages: list[DashboardOperatorMessage]
+    modelSignals: list[DashboardModelSignal]
+    focusBySystem: dict[SystemId, DashboardPolicyFocus]
+    trendBySystem: dict[SystemId, list[DashboardTrendPoint]]
+
+
+class SimulationScenarioSource(BaseModel):
+    dashboard: SimulatorDashboardResponse
+    events: list[SimulationEvent]
 
 
 class ArchitectureResponse(BaseModel):
@@ -159,18 +243,3 @@ class ArchitectureResponse(BaseModel):
     prediction_engine: str
     research_workspace: str
     deployment_note: str
-
-
-class ChatTextPart(BaseModel):
-    type: Literal["text"] = "text"
-    text: str = ""
-
-
-class ChatMessage(BaseModel):
-    id: str | None = None
-    role: Literal["system", "user", "assistant"]
-    parts: list[ChatTextPart] = Field(default_factory=list)
-
-
-class ChatRequest(BaseModel):
-    messages: list[ChatMessage] = Field(default_factory=list)

@@ -246,6 +246,13 @@ s_t = [
 ### 6.3 action masking
 엔진은 매 턴 `available_actions` 를 계산해야 한다.
 
+현재 구현 메모:
+
+- 이 문단은 개념 설계 기준이다.
+- 현재 FE 런타임 구현은 `available_actions` 버튼 목록을 직접 쓰지 않는다.
+- 대신 `incident 충격 -> editable raw model input form -> budget 제약` 구조로 플레이어 선택지를 제공한다.
+- 즉 현재 플레이어가 실제로 고르는 것은 action 목록보다 `strict raw model input` 조정안에 가깝다.
+
 마스킹 이유:
 - 현재 상태에서 실행 불가한 액션 방지
 - 운영 규칙 위반 방지
