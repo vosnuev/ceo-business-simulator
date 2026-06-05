@@ -1,5 +1,5 @@
 
-# 프로젝트 문서: 꼬우면 니가 CEO 하던가 — Project Description & Project Plan
+# 프로젝트 문서: CEO 체험기 — Project Description & Project Plan
 
 ## 0. 문서 목적
 
@@ -20,7 +20,7 @@
 ## 1. 프로젝트 설명(Project Description)
 
 ### 1.1 프로젝트 이름
-**꼬우면 니가 CEO 하던가**  
+**CEO 체험기**  
 부제: **Retention Strategy Simulator**
 
 ### 1.2 한 줄 설명
@@ -384,7 +384,7 @@ flowchart LR
 
 ## 14. 최종 프로젝트 정의
 
-> `꼬우면 니가 CEO 하던가` 는 retention/churn 문제를  
+> `CEO 체험기` 는 retention/churn 문제를  
 > **state → action → future outcome** 구조로 재해석하고,  
 > 이를 플레이 가능한 시뮬레이션 경험으로 번역하는  
 > **기술+기획 결합형 프로젝트**다.
